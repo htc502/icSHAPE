@@ -10,9 +10,12 @@ use File::Basename;
 use Getopt::Std;
 
 my $_debug = 0;
-my %config = ();
+my %config = (); #this is an associative array
 
-use vars qw ($opt_h $opt_V $opt_D $opt_i $opt_t $opt_o $opt_c );
+use vars qw ($opt_h $opt_V $opt_D $opt_i $opt_t $opt_o $opt_c ); #use vars to predecleare a set of global variables
+                                                                 #getopt get options for switch h as $opt_h
+                                                                 #guess that V is for version and D for debug..
+                                                                 #but there is no such implementation...
 &getopts('hVDi:t:o:c:');
 
 my $usage = <<_EOH_;
@@ -37,22 +40,25 @@ _EOH_
 sub main
 {
     &init ();
-    if ( $_debug ) { foreach my $key ( keys %config ) { print $key, "\t", $config{$key}, "\n"; }  }
+    if ( $_debug ) { foreach my $key ( keys %config ) { print $key, "\t", $config{$key}, "\n"; }  } #if in debug mode, print parameter info
 
     my $outDir = $config{outDir};
     my @inputSeqFiles = split ( /:/, $config{input} ); my @targetSeqFiles = split ( /:/, $config{target} );
     my @inputSignalFile = (); my @targetSignalFile = ();
+
     foreach my $seqFile ( @inputSeqFiles, @targetSeqFiles ) {
         my ($fileName, $fileDir, $fileSuffix) = fileparse ( $seqFile, qr/\.[^.]*/ ); 
         my $seqCollapsed = $outDir . "/" . $fileName . ".rmdup.fastq";
         my $seqDatFasta = $outDir . "/" . $fileName . ".fa";
         if ( not -e "$seqCollapsed.done" ) {
             print STDERR "$config{COLLAPSEBIN} -U $seqFile -o $seqCollapsed -f $seqDatFasta\n";
+	    ##use collapsebin to to reads collapse
             print STDERR `$config{COLLAPSEBIN} -U $seqFile -o $seqCollapsed -f $seqDatFasta`;
-            if ( not $? ) {  print STDERR `touch $seqCollapsed.done`;  }
+            if ( not $? ) {  print STDERR `touch $seqCollapsed.done`;  } #seqCollapsed.done is a file indicator for job completion
         }
         if ( not -e "$seqCollapsed.done" ) { die "Abort! icSHAPE pipeline die of unsuccessful read collapse.\n"; }
 
+	##adaptor trimming
         my $seqTrimmed = $outDir . "/" . $fileName . ".trimmed.fastq";
         if ( not -e "$seqTrimmed.done" ) {
             print STDERR "$config{TRIMMER} -U $seqCollapsed -o $seqTrimmed -l $config{LEADINGTRIM} -t $config{TAILINGTRIM} -c $config{FASTQCODING} -a $config{ADAPTER} -m $config{TRIMMINLEN}\n";
@@ -66,6 +72,8 @@ sub main
             my $alignOptions = ""; 
             $alignOptions .= "--" . $config{FASTQCODING} if ( defined $config{FASTQCODING} );
             $alignOptions .= " " . $config{MAPPINGOPTIONS} if ( defined $config{MAPPINGOPTIONS} );
+
+	    ##-q is the default format, is not naccesary to specify
             print STDERR "$config{ALIGNER} -U $seqTrimmed -S $samFile -x $config{MAPPINGREF} $alignOptions\n";
             print STDERR `$config{ALIGNER} -U $seqTrimmed -S $samFile -x $config{MAPPINGREF} $alignOptions`;
             if ( not $? ) {  print STDERR `touch $samFile.done`;  }
@@ -84,7 +92,7 @@ sub main
         # print STDERR "$config{seqSummary} -i $samFile -o $seqSumFile -r $rpkmFile\n";
         # print STDERR `$config{seqSummary} -i $samFile -o $seqSumFile -r $rpkmFile`;
 
-        my $rtFile = $outDir . "/" . $fileName . ".rt";
+        my $rtFile = $outDir . "/" . $fileName . ".rt"; #reverse transcription stop calculation
         if ( not -e "$rtFile.done" ) {
             print STDERR "$config{CALCRT} -i $samFile -o $rtFile -r $rpkmFile -c $config{MINLOAD}\n";
             print STDERR `$config{CALCRT} -i $samFile -o $rtFile -r $rpkmFile -c $config{MINLOAD}`;
@@ -98,7 +106,7 @@ sub main
 
     my $combinedInputSignalFile = $outDir . "/background.rt";
     if ( not -e "$combinedInputSignalFile.done" ) {
-        if ( scalar @inputSignalFile > 1 ) {
+        if ( scalar @inputSignalFile > 1 ) { #more than one background samples?
             my $allInputSignalFile = "";
             foreach my $signalFile ( @inputSignalFile ) { $allInputSignalFile .= $signalFile . ":"; }
             $allInputSignalFile =~ s/:$//;
