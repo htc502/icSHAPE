@@ -77,6 +77,9 @@ sub init {
 }
 
 sub calcTranscriptAbundance_evenDistribute {
+    ##this function calculate the number of unique/multiple mapped reads and return these numbers
+    ##and fill the data sturcture: $ref_transcript_uniqRead/multiRead which record the number of reads mapped to
+    ##ref sequences
     my ( $inputSam, $ref_transcript_len, $ref_transcript_uniqRead, $ref_transcript_multiRead, $firstSam )  = @_;
     print STDERR "Estimation of transcript expression level by equally distribute multiple hits...\n\t", `date`;
 
@@ -86,7 +89,7 @@ sub calcTranscriptAbundance_evenDistribute {
     my $totalCount = 0; my $multiHitCount = 0;  my $uniqHitCount = 0;
     while ( my $line = <IN> ) {
         if ( $line =~ /^@/ ) {
-            if ( $firstSam ) {
+            if ( $firstSam ) { ##initialize ref_transcript_len/uniqRead/multiRead structure with the sam head section
                 my ( $type, $seqID, $len ) = split ( /\t/, $line );
                 if ( $type =~ /SQ/ ) {
                     $seqID =~ s/SN://;
@@ -101,16 +104,20 @@ sub calcTranscriptAbundance_evenDistribute {
             my ( $read, $tag, $hit, $pos, $mapq, $cigar, $rnext, $pnext, $tlen, $seq, $qual ) = split ( /\t/, $line );
 
             next if ( ( not looks_like_number($tag) ) or ( not looks_like_number($pos) ) );  
+
+	    ##code below for deciding PE/SE from sam code
             if ( ( $tag == 99 ) or ( $tag == 355 ) ) { next if ( $rnext ne "=" ); } ## PE
             elsif ( ( $tag == 0 ) or ( $tag == 256 ) ) { } ## SE
             else { next; }
 
+	    ##calculate ref transcript hit count
             $totalCount++; print STDERR $totalCount, "\n\t", `date` if ( $totalCount % 1000000 == 0 );
-            if ( $read ne $readOld ) {
-                if ( $readOld ) {
+            if ( $read ne $readOld ) { #encountered a new read
+                if ( $readOld ) { #not empty
                     if ( $hitCount > 1 ) {
-                        foreach my $hit ( @hitIDs ) { 
-                            next if ( not defined $ref_transcript_uniqRead->{$hit} );
+                        foreach my $hit ( @hitIDs ) { # * if not mapped for this read
+                            next if ( not defined $ref_transcript_uniqRead->{$hit} ); #drop if the ref is not included in ref_ts_uniqueRead
+			                                                              #like *
                             $ref_transcript_multiRead->{$hit} += ( 1/$hitCount ); 
                         }
                         $multiHitCount++;
@@ -128,6 +135,7 @@ sub calcTranscriptAbundance_evenDistribute {
     }
     close IN;
 
+    ##the last line should be considered...
     if ( $readOld ) {
         if ( $hitCount > 1 ) {
             foreach my $hit ( @hitIDs ) { 
@@ -151,6 +159,7 @@ sub calcTranscriptAbundance_evenDistribute {
 }
 
 sub calcRPKM  {
+    #RPKM calc: rpkm = gene.mapped.reads# * 100000000 /(total.reads#*gene.len) 
     my ( $ref_transcript_rpkm, $ref_transcript_len, $totalRead, $ref_transcript_uniqRead, $ref_transcript_multiRead ) = @_;
 
     if ( defined $ref_transcript_multiRead ) {

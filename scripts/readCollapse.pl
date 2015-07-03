@@ -14,6 +14,8 @@ use FindBin;
 my $splitFastqBin = "$FindBin::Bin/../bin/splitByBarcode";
 my $readCollapseBin = "$FindBin::Bin/../bin/readCollapse";
 
+my $tmp_dir = "";
+
 use vars qw ($opt_h $opt_V $opt_D $opt_U $opt_1 $opt_2 $opt_o $opt_p $opt_q $opt_a $opt_f );
 &getopts('hVDU:1:2:o:p:q:af:');
 
@@ -70,7 +72,9 @@ sub main {
     if ( $cLen > 0 ) {
         print STDERR "File $inFile too large, will be splitted...\n\t", `date`;
         shift @file2Collapse;
-        my $tmpOutDir = "/tmp";
+	##our tmp is small(mounted on root with only 345G free space available...
+	##change it to current dir
+        my $tmpOutDir = "/data2/hangc/tmp"; $tmp_dir = $tmpOutDir;
         print STDERR "$splitFastqBin $inFile $tmpOutDir $cPos $cLen new\n\t", `date`;
         my $filesSplited = `$splitFastqBin $inFile $tmpOutDir $cPos $cLen new`;
         if ( $filesSplited =~ /^ERROR/i ) { die ( "Error! splitting file failed. quiting...\n\t" . `date` ); }       ## cleaning may be needed
@@ -104,6 +108,9 @@ sub main {
     else { print STDERR "Collapsing file $parameters{input1} and $parameters{input2} finished.\n\t", `date`; }
 
     print "Read collapse successful! Total count: $totalReads, unique count: $uniqReads, unique ratio: $uniqRatio.\n";
+    ##we should clean up the tmp dir ....
+    print "Cleaning up tmp dir \n";
+    if ( $tmp_dir ) { print STDERR `/bin/rm -rf $tmp_dir/*`; }
     1;
 }
 
