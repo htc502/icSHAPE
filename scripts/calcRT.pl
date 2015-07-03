@@ -36,8 +36,10 @@ sub main {
     my ( $ref_transcript_len, $ref_transcript_FPKM ) = &readRPKM ( $parameters{rpkmFile}, $parameters{minload} );
 
     my %baseDensity = ();
-    my %RTstop = ();
-    foreach my $tran ( keys %{$ref_transcript_len} ) {
+    my %RTstop = (); #both of which are associative arrays
+
+    ##codes bellow for variable initialize
+    foreach my $tran ( keys %{$ref_transcript_len} ) {#tran for each transcript
         for ( my $idx = 0; $idx <= $ref_transcript_len->{$tran}; $idx++ ) {
             $baseDensity{$tran}[$idx] = 0;
             $RTstop{$tran}[$idx] = 0;
@@ -121,20 +123,21 @@ sub calcBaseDensity {
                 }
             }
             $hitCount = 0;
-            %hitID_start = ();
+            %hitID_start = (); #an associate array
             %hitID_end = ();
         }
 
         $readID = $read;
         $hitCount++;
         if ( defined $ref_transcript_len->{$hit} ) {
-            $hitID_start{$hit} = $pos;
+            $hitID_start{$hit} = $pos; 
             $hitID_end{$hit} = $pos + $tlen;
             $hitID_end{$hit} = $ref_transcript_len->{$hit} + 1 if ( $ref_transcript_len->{$hit} < $hitID_end{$hit} );
         }
     }
     close SAM;
 
+    ##for the last line...
     if ( $readID ) {
         foreach my $hitID ( keys %hitID_start ) {
             for ( my $idx = $hitID_start{$hitID}; $idx < $hitID_end{$hitID}; $idx++ )

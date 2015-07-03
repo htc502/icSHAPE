@@ -175,6 +175,7 @@ sub calcEnrichment {
             }
             for ( my $idx = $skipHead; $idx < ( $ref_fg_len->{$trans} - $skipTail ); $idx++ )  {
                 if ( $ref_bg_baseDensity->{$trans}[$idx] > 0 ) {
+		    ##from this formula we know that signalEnrichment stores acitivity score...
                     $siganlEnrichment[$idx] = sprintf ( "%.3f", ( $divFactor * ( $ref_fg_RTstop->{$trans}[$idx] - $subFactor * $ref_bg_RTstop->{$trans}[$idx] ) / $ref_bg_baseDensity->{$trans}[$idx] ) );
                 }
                 else {
